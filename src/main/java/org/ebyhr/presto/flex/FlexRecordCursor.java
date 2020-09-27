@@ -86,13 +86,21 @@ public class FlexRecordCursor
         String tblName = schemaTableName.getTableName();
         URI uri = null;
         ByteSource byteSource;
+        String[] splitted;
+        String tblNameForBytes = tblName;
+        Integer excelIndex = 0;
+        if (tblName.contains(" ")) {
+            splitted = tblName.split(" ");
+            tblNameForBytes = splitted[0];
+            excelIndex = Integer.parseInt(splitted[1]);
+        }
 
         try {
-            byteSource = Resources.asByteSource(URI.create(tblName).toURL());
+            byteSource = Resources.asByteSource(URI.create(tblNameForBytes).toURL());
         } catch (MalformedURLException e) {
             throw new RuntimeException(e.getMessage());
         }
-
+        
         //powerpoint
         if (tblName.endsWith(".ppt") || tblName.endsWith(".pptx") || tblName.contains(".ppt?") || tblName.contains(".pptx?")) {
             PowerPointExtractor powerPointExtractor = null;
@@ -300,9 +308,12 @@ public class FlexRecordCursor
             }
         }
         else {
-            //text/csv..etc
+            //text/csv/excel..etc
             try (CountingInputStream input = new CountingInputStream(byteSource.openStream())) {
-                lines = plugin.getIterator(byteSource);
+                if (excelIndex > 0)
+                    lines = plugin.getIterator(byteSource, excelIndex);
+                else
+                    lines = plugin.getIterator(byteSource);
                 if (plugin.skipFirstLine()) {
                     lines.next();
                 }
@@ -348,7 +359,12 @@ public class FlexRecordCursor
         checkState(fields != null, "Cursor has not been advanced yet");
 
         int columnIndex = fieldToColumnIndex[field];
-        return fields.get(columnIndex);
+        try {
+            return fields.get(columnIndex);
+        }
+        catch (Exception e) {
+            return "";
+        }
     }
 
     @Override
